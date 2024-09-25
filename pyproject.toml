@@ -1,14 +1,14 @@
 [project]
-name = "comfyui-pixtral"
-description = "For loading and running Pixtral models"
-version = "1.0.0"
+name = "comfyui-pixtralllamavision"
+description = "For loading and running Pixtral and Llama 3.2 Vision models"
+version = "2.0.0"
 license = {file = "LICENSE"}
 
 [project.urls]
-Repository = "https://github.com/SeanScripts/ComfyUI-Pixtral"
+Repository = "https://github.com/SeanScripts/ComfyUI-PixtralLlamaVision"
 #  Used by Comfy Registry https://comfyregistry.org 
 
 [tool.comfy]
 PublisherId = "seanscripts"
-DisplayName = "ComfyUI-Pixtral"
+DisplayName = "ComfyUI-PixtralLlamaVision"
 Icon = ""
