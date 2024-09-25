@@ -11,6 +11,6 @@ Also install bitsandbytes if you don't have it already:
 `python_embeded\python.exe -m pip install bitsandbytes`
 
 You can get a 4-bit quantized version of Pixtral-12B which is compatible with these custom nodes here:
-[https://huggingface.co/SeanScripts/pixtral-12b-nf4]
+[https://huggingface.co/SeanScripts/pixtral-12b-nf4](https://huggingface.co/SeanScripts/pixtral-12b-nf4)
 
 ![Example workflow](pixtral_caption_example.jpg)
