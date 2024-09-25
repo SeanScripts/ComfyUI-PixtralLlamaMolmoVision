@@ -142,7 +142,7 @@ class LlamaVisionGenerateText:
             "required": {
                 "llama_vision_model": ("LLAMA_VISION_MODEL",),
                 "images": ("IMAGE",),
-                "prompt": ("STRING", {"default": "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\nCaption this image:\n<|image|><|eot_id|><|start_header_id|>assistant<|end_header_id|>", "multiline": True}),
+                "prompt": ("STRING", {"default": "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nCaption this image:\n<|image|><|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n", "multiline": True}),
                 "max_new_tokens": ("INT", {"default": 256, "min": 1, "max": 4096}),
                 "do_sample": ("BOOLEAN", {"default": True}),
                 "temperature": ("FLOAT", {"default": 0.5}),
@@ -179,7 +179,7 @@ class LlamaVisionGenerateText:
         time_per_token = generated_tokens/total_time
         print(f"Generated {generated_tokens} tokens in {total_time:.3f} s ({time_per_token:.3f} tok/s)")
         print(len(generate_ids[0][prompt_tokens:]))
-        output = pixtral_model['processor'].decode(generate_ids[0][prompt_tokens:], skip_special_tokens=True, clean_up_tokenization_spaces=False)
+        output = llama_vision_model['processor'].decode(generate_ids[0][prompt_tokens:], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         print(output)
         return (output,)
 
