@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-pixtralllamavision"
 description = "For loading and running Pixtral and Llama 3.2 Vision models"
-version = "2.1.0"
+version = "2.1.1"
 license = {file = "LICENSE"}
 
 [project.urls]

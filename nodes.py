@@ -1,25 +1,8 @@
 import comfy.utils
 import comfy.model_management as mm
 import folder_paths
-
-from transformers import AutoProcessor, BitsAndBytesConfig, set_seed
-
-pixtral = True
-llama_vision = True
-# transformers 4.45.0
-try:
-    from transformers import LlavaForConditionalGeneration
-except ImportError:
-    print("[ComfyUI-PixtralLlamaVision] Can't load Pixtral, need to update transformers")
-    pixtral = False
-
-# transformers 4.46.0
-try:
-    from transformers import MllamaForConditionalGeneration
-except ImportError:
-    print("[ComfyUI-PixtralLlamaVision] Can't load Llama Vision, need to update transformers")
-    llama_vision = False
-
+# Requires transformers >= 4.45.0
+from transformers import LlavaForConditionalGeneration, MllamaForConditionalGeneration, AutoProcessor, BitsAndBytesConfig, set_seed
 from torchvision.transforms.functional import to_pil_image
 from PIL import Image
 import time
@@ -27,13 +10,21 @@ import os
 from pathlib import Path
 import re
 
+pixtral_model_dir = os.path.join(folder_paths.models_dir, "pixtral")
+llama_vision_model_dir = os.path.join(folder_paths.models_dir, "llama-vision")
+# Add pixtral and llama-vision folders if not present
+if not os.path.exists(pixtral_model_dir):
+    os.makedirs(pixtral_model_dir)
+if not os.path.exists(llama_vision_model_dir):
+    os.makedirs(llama_vision_model_dir)
+
 class PixtralModelLoader:
     """Loads a Pixtral model. Add models as folders inside the `ComfyUI/models/pixtral` folder. Each model folder should contain a standard transformers loadable safetensors model along with a tokenizer and any config files needed."""
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "model_name": ([item.name for item in Path(folder_paths.models_dir, "pixtral").iterdir() if item.is_dir()],),
+                "model_name": ([item.name for item in Path(pixtral_model_dir).iterdir() if item.is_dir()],),
             }
         }
 
@@ -43,7 +34,7 @@ class PixtralModelLoader:
     TITLE = "Load Pixtral Model"
 
     def load_model(self, model_name):
-        model_path = os.path.join(folder_paths.models_dir, "pixtral", model_name)
+        model_path = os.path.join(pixtral_model_dir, model_name)
         device = mm.get_torch_device()
         model = LlavaForConditionalGeneration.from_pretrained(
             model_path,
@@ -115,7 +106,7 @@ class LlamaVisionModelLoader:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "model_name": ([item.name for item in Path(folder_paths.models_dir, "llama-vision").iterdir() if item.is_dir()],),
+                "model_name": ([item.name for item in Path(llama_vision_model_dir).iterdir() if item.is_dir()],),
             }
         }
 
@@ -125,7 +116,7 @@ class LlamaVisionModelLoader:
     TITLE = "Load Llama Vision Model"
 
     def load_model(self, model_name):
-        model_path = os.path.join(folder_paths.models_dir, "llama-vision", model_name)
+        model_path = os.path.join(llama_vision_model_dir, model_name)
         device = mm.get_torch_device()
         model = MllamaForConditionalGeneration.from_pretrained(
             model_path,
@@ -433,6 +424,13 @@ class SliceList:
 # Batch Count works for getting list length
 
 NODE_CLASS_MAPPINGS = {
+    "PixtralModelLoader": PixtralModelLoader,
+    "PixtralGenerateText": PixtralGenerateText,
+    # Not really much need to work with the image tokenization directly for something like image captioning, but might be interesting later...
+    #"PixtralImageEncode": PixtralImageEncode,
+    #"PixtralTextEncode": PixtralTextEncode,
+    "LlamaVisionModelLoader": LlamaVisionModelLoader,
+    "LlamaVisionGenerateText": LlamaVisionGenerateText,
     "RegexSplitString": RegexSplitString,
     "RegexSearch": RegexSearch,
     "RegexFindAll": RegexFindAll,
@@ -442,20 +440,5 @@ NODE_CLASS_MAPPINGS = {
     "SelectIndex": SelectIndex,
     "SliceList": SliceList,
 }
-
-if pixtral:
-    NODE_CLASS_MAPPINGS |= {
-        "PixtralModelLoader": PixtralModelLoader,
-        "PixtralGenerateText": PixtralGenerateText,
-        # Not really much need to work with the image tokenization directly for something like image captioning, but might be interesting later...
-        #"PixtralImageEncode": PixtralImageEncode,
-        #"PixtralTextEncode": PixtralTextEncode,
-    }
-
-if llama_vision:
-    NODE_CLASS_MAPPINGS |= {
-        "LlamaVisionModelLoader": LlamaVisionModelLoader,
-        "LlamaVisionGenerateText": LlamaVisionGenerateText,
-    }
 
 NODE_DISPLAY_NAME_MAPPINGS = {k:v.TITLE for k,v in NODE_CLASS_MAPPINGS.items()}

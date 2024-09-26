@@ -16,25 +16,28 @@ Along with some utility nodes for working with text:
 - Join String
 - Select Index
 - Slice List
- 
-Install the latest version of transformers, which has support for Pixtral/Llama Vision models:
-`python_embeded\python.exe -m pip install git+https://github.com/huggingface/transformers`
 
-Requires transformers 4.45.0 for Pixtral and 4.46.0 for Llama Vision.
+## Installation
+
+Available in [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager) as ComfyUI-PixtralLlamaVision. When installed from ComfyUI-Manager, the required packages will be installed automatically.
+
+If you install by cloning this repo into your custom nodes folder, you'll need to install `transformers >= 4.45.0` to load Pixtral and Llama Vision models:
+`python_embeded\python.exe -m pip install transformers --upgrade`
 
 Also install bitsandbytes if you don't have it already:
 `python_embeded\python.exe -m pip install bitsandbytes`
 
 Models should be placed in the `ComfyUI/models/pixtral` and `ComfyUI/models/llama-vision` folders, with each model inside a folder with the `model.safetensors` file along with any config files and the tokenizer.
 
-You can get a 4-bit quantized version of Pixtral-12B which is compatible with these custom nodes here: [https://huggingface.co/SeanScripts/pixtral-12b-nf4](https://huggingface.co/SeanScripts/pixtral-12b-nf4)
+You can get a 4-bit quantized version of Pixtral-12B and/or Llama-3.2-11B-Vision-Instruct which is compatible with these custom nodes here:
 
-You can get a 4-bit quantized version of Llama-3.2-11B-Vision-Instruct which is compatible with these custom nodes here:
+[https://huggingface.co/SeanScripts/pixtral-12b-nf4](https://huggingface.co/SeanScripts/pixtral-12b-nf4)
+
 [https://huggingface.co/SeanScripts/Llama-3.2-11B-Vision-Instruct-nf4](https://huggingface.co/SeanScripts/Llama-3.2-11B-Vision-Instruct-nf4)
 
 Unfortunately, the Pixtral nf4 model has considerably degraded performance on some tasks, like OCR. The Llama Vision model seems to be better for this task.
 
-I also tested Pixtral's object detection with bounding box generation and it seems to sort of work with approximate results, though it still fails quite often. The full model might be better, or maybe it could be improved with finetuning.
+## Examples
 
 Example Pixtral image captioning (not saving the output to a text file in this example):
 ![Example Pixtral image captioning workflow](pixtral_caption_example.jpg)
