@@ -1,0 +1,549 @@
+{
+  "last_node_id": 45,
+  "last_link_id": 61,
+  "nodes": [
+    {
+      "id": 30,
+      "type": "RegexSubstitution",
+      "pos": {
+        "0": 480,
+        "1": 370
+      },
+      "size": {
+        "0": 210,
+        "1": 102
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string",
+          "type": "STRING",
+          "link": 47,
+          "widget": {
+            "name": "string"
+          }
+        },
+        {
+          "name": "replace",
+          "type": "STRING",
+          "link": 46,
+          "widget": {
+            "name": "replace"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            56
+          ],
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RegexSubstitution"
+      },
+      "widgets_values": [
+        "{object}",
+        "test {object} test",
+        "test",
+        "M"
+      ]
+    },
+    {
+      "id": 14,
+      "type": "DF_Text_Box",
+      "pos": {
+        "0": 25,
+        "1": 132
+      },
+      "size": [
+        419.0710417248363,
+        355.2226996953112
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            47
+          ],
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DF_Text_Box"
+      },
+      "widgets_values": [
+        "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n<|image|>Create an approximate bounding box containing the {object} in this image. Your response should only include the coordinates of the upper-left and lower-right corners of the bounding box relative to the image size, e.g. [(0.0, 0.0), (1.0, 1.0)] is a bounding box that covers the entire image.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\nThe bounding box coordinates of the {object} are: [("
+      ]
+    },
+    {
+      "id": 15,
+      "type": "DF_Text_Box",
+      "pos": {
+        "0": 75,
+        "1": 550
+      },
+      "size": {
+        "0": 247.62606811523438,
+        "1": 92.8243179321289
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            46
+          ],
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DF_Text_Box"
+      },
+      "widgets_values": [
+        "text"
+      ]
+    },
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": {
+        "0": 366,
+        "1": 605
+      },
+      "size": {
+        "0": 315,
+        "1": 314
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            7,
+            12,
+            57
+          ],
+          "slot_index": 0,
+          "shape": 3
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "CogVideoX-I2V_00006.png",
+        "image"
+      ]
+    },
+    {
+      "id": 44,
+      "type": "LlamaVisionModelLoader",
+      "pos": {
+        "0": 489,
+        "1": 175
+      },
+      "size": [
+        351.37104172483635,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LLAMA_VISION_MODEL",
+          "type": "LLAMA_VISION_MODEL",
+          "links": [
+            55
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LlamaVisionModelLoader"
+      },
+      "widgets_values": [
+        "Llama-3.2-11B-Vision-Instruct-nf4"
+      ]
+    },
+    {
+      "id": 10,
+      "type": "ParseBoundingBoxes",
+      "pos": {
+        "0": 1125,
+        "1": 315
+      },
+      "size": {
+        "0": 210,
+        "1": 102
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 12
+        },
+        {
+          "name": "string",
+          "type": "STRING",
+          "link": 60,
+          "widget": {
+            "name": "string"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BBOX",
+          "type": "BBOX",
+          "links": [
+            26,
+            27
+          ],
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ParseBoundingBoxes"
+      },
+      "widgets_values": [
+        "",
+        true,
+        true
+      ]
+    },
+    {
+      "id": 12,
+      "type": "Display Any (rgthree)",
+      "pos": {
+        "0": 1418,
+        "1": 251
+      },
+      "size": {
+        "0": 248.57421875,
+        "1": 85.7146224975586
+      },
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 27,
+          "dir": 3
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "Display Any (rgthree)"
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 6,
+      "type": "BboxVisualize",
+      "pos": {
+        "0": 1431,
+        "1": 410
+      },
+      "size": {
+        "0": 210,
+        "1": 78
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 7
+        },
+        {
+          "name": "bboxes",
+          "type": "BBOX",
+          "link": 26
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            8
+          ],
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BboxVisualize"
+      },
+      "widgets_values": [
+        3
+      ]
+    },
+    {
+      "id": 7,
+      "type": "PreviewImage",
+      "pos": {
+        "0": 1702,
+        "1": 404
+      },
+      "size": {
+        "0": 443,
+        "1": 489
+      },
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 8
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 4,
+      "type": "Display Any (rgthree)",
+      "pos": {
+        "0": 1692,
+        "1": 138
+      },
+      "size": {
+        "0": 502.48602294921875,
+        "1": 207.90098571777344
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 61,
+          "dir": 3
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "Display Any (rgthree)"
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 45,
+      "type": "LlamaVisionGenerateText",
+      "pos": {
+        "0": 719,
+        "1": 303
+      },
+      "size": [
+        352.0710417248365,
+        218
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "llama_vision_model",
+          "type": "LLAMA_VISION_MODEL",
+          "link": 55
+        },
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 57
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 56,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            60,
+            61
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LlamaVisionGenerateText"
+      },
+      "widgets_values": [
+        "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n<|image|>Caption this image.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        256,
+        false,
+        0,
+        3812963782,
+        "randomize",
+        false
+      ]
+    }
+  ],
+  "links": [
+    [
+      7,
+      1,
+      0,
+      6,
+      0,
+      "IMAGE"
+    ],
+    [
+      8,
+      6,
+      0,
+      7,
+      0,
+      "IMAGE"
+    ],
+    [
+      12,
+      1,
+      0,
+      10,
+      0,
+      "IMAGE"
+    ],
+    [
+      26,
+      10,
+      0,
+      6,
+      1,
+      "BBOX"
+    ],
+    [
+      27,
+      10,
+      0,
+      12,
+      0,
+      "*"
+    ],
+    [
+      46,
+      15,
+      0,
+      30,
+      1,
+      "STRING"
+    ],
+    [
+      47,
+      14,
+      0,
+      30,
+      0,
+      "STRING"
+    ],
+    [
+      55,
+      44,
+      0,
+      45,
+      0,
+      "LLAMA_VISION_MODEL"
+    ],
+    [
+      56,
+      30,
+      0,
+      45,
+      2,
+      "STRING"
+    ],
+    [
+      57,
+      1,
+      0,
+      45,
+      1,
+      "IMAGE"
+    ],
+    [
+      60,
+      45,
+      0,
+      10,
+      1,
+      "STRING"
+    ],
+    [
+      61,
+      45,
+      0,
+      4,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9090909090909091,
+      "offset": [
+        269.92895827516367,
+        10.077300304688922
+      ]
+    }
+  },
+  "version": 0.4
+}
