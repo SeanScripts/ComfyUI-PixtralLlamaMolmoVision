@@ -1,41 +1,85 @@
 import comfy.utils
 import comfy.model_management as mm
 import folder_paths
-# Requires transformers >= 4.45.0
-from transformers import LlavaForConditionalGeneration, MllamaForConditionalGeneration, AutoProcessor, BitsAndBytesConfig, set_seed
+
+from transformers import (
+    LlavaForConditionalGeneration,
+    MllamaForConditionalGeneration,
+    AutoModelForCausalLM,
+    AutoProcessor,
+    BitsAndBytesConfig,
+    GenerationConfig,
+    set_seed
+)
 from torchvision.transforms.functional import to_pil_image
-from PIL import Image
-import time
+
+import json
 import os
 from pathlib import Path
+from PIL import Image
 import re
+import time
 
-pixtral_model_dir = os.path.join(folder_paths.models_dir, "pixtral")
-llama_vision_model_dir = os.path.join(folder_paths.models_dir, "llama-vision")
-# Add pixtral and llama-vision folders if not present
-if not os.path.exists(pixtral_model_dir):
-    os.makedirs(pixtral_model_dir)
-if not os.path.exists(llama_vision_model_dir):
-    os.makedirs(llama_vision_model_dir)
+# Using folder ComfyUI/models/LLM -- Place each model inside its own folder here, e.g. ComfyUI/models/LLM/pixtral-12b-nf4/model.safetensors
+# Also include other config files and tokenizer files in that same folder
+llm_model_dir = os.path.join(folder_paths.models_dir, "LLM")
+# Add LLM folder if not present
+if not os.path.exists(llm_model_dir):
+    os.makedirs(llm_model_dir)
+    
+model_type_map = {
+    "LlavaForConditionalGeneration": LlavaForConditionalGeneration,
+    "MllamaForConditionalGeneration": MllamaForConditionalGeneration,
+    "MolmoForCausalLM": AutoModelForCausalLM,
+    # Other vision models can be added here as needed but will require importing
+    "AutoModelForCausalLM": AutoModelForCausalLM,
+}
+
+def get_models_with_config():
+    models = []
+    for model_path in Path(llm_model_dir).iterdir():
+        if model_path.is_dir():
+            if os.path.exists(os.path.join(model_path, "config.json")):
+                models.append(model_path.parts[-1])
+    return models
+
+def get_model_type(model_path):
+    config_path = os.path.join(model_path, "config.json")
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as config_file:
+            config = json.load(config_file)
+            return config["architectures"][0]
+    print(f"Invalid model config for model {model_path}")
+    return "Invalid model config"
+
+def get_models_of_type(model_type):
+    models = []
+    for model_path in Path(llm_model_dir).iterdir():
+        if model_path.is_dir():
+            current_model_type = get_model_type(model_path)
+            if current_model_type == model_type:
+                models.append(model_path.parts[-1])
+    return models
 
 class PixtralModelLoader:
-    """Loads a Pixtral model. Add models as folders inside the `ComfyUI/models/pixtral` folder. Each model folder should contain a standard transformers loadable safetensors model along with a tokenizer and any config files needed."""
+    """Loads a Pixtral model. Add models as folders inside the `ComfyUI/models/LLM` folder. Each model folder should contain a standard transformers loadable safetensors model along with a tokenizer and any config files needed."""
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "model_name": ([item.name for item in Path(pixtral_model_dir).iterdir() if item.is_dir()],),
+                "model_name": (get_models_of_type("LlavaForConditionalGeneration"),),
             }
         }
 
-    RETURN_TYPES = ("PIXTRAL_MODEL",)
+    RETURN_TYPES = ("VISION_MODEL",)
     FUNCTION = "load_model"
     CATEGORY = "PixtralLlamaVision/Pixtral"
     TITLE = "Load Pixtral Model"
 
     def load_model(self, model_name):
-        model_path = os.path.join(pixtral_model_dir, model_name)
+        model_path = os.path.join(llm_model_dir, model_name)
         device = mm.get_torch_device()
+        print(f"Loading Pixtral model: {model_name}")
         model = LlavaForConditionalGeneration.from_pretrained(
             model_path,
             use_safetensors=True,
@@ -54,13 +98,18 @@ class PixtralGenerateText:
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "required": {
-                "pixtral_model": ("PIXTRAL_MODEL",),
+            "optional": {
                 "images": ("IMAGE",),
+            },
+            "required": {
+                "pixtral_model": ("VISION_MODEL",),
                 "prompt": ("STRING", {"default": "<s>[INST]Caption this image:\n[IMG][/INST]", "multiline": True}),
                 "max_new_tokens": ("INT", {"default": 256, "min": 1, "max": 4096}),
                 "do_sample": ("BOOLEAN", {"default": True}),
                 "temperature": ("FLOAT", {"default": 0.3, "min": 0, "step": 0.1}),
+                "top_p": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.1}),
+                "top_k": ("INT", {"default": 40, "min": 1}),
+                "repetition_penalty": ("FLOAT", {"default": 1.1}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
                 "include_prompt_in_output": ("BOOLEAN", {"default": False}),
             }
@@ -71,7 +120,7 @@ class PixtralGenerateText:
     CATEGORY = "PixtralLlamaVision/Pixtral"
     TITLE = "Generate Text with Pixtral"
 
-    def generate_text(self, pixtral_model, images, prompt, max_new_tokens, do_sample, temperature, seed, include_prompt_in_output):
+    def generate_text(self, pixtral_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, repetition_penalty, seed, include_prompt_in_output):
         device = pixtral_model['model'].device
         # I'm sure there is a way to do this without converting back to numpy and then PIL...
         # Pixtral requires PIL input for some reason, and the to_pil_image function requires channels to be the first dimension for a Tensor but the last dimension for a numpy array... Yeah idk
@@ -84,16 +133,20 @@ class PixtralGenerateText:
         t0 = time.time()
         generate_ids = pixtral_model['model'].generate(
             **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=do_sample,
-            temperature=temperature,
+            generation_config=GenerationConfig(
+                max_new_tokens=max_new_tokens,
+                do_sample=do_sample,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                repetition_penalty=repetition_penalty,
+            )
         )
         t1 = time.time()
         total_time = t1 - t0
         generated_tokens = len(generate_ids[0]) - prompt_tokens
         time_per_token = generated_tokens/total_time
         print(f"Generated {generated_tokens} tokens in {total_time:.3f} s ({time_per_token:.3f} tok/s)")
-        print(len(generate_ids[0][prompt_tokens:]))
         output_tokens = generate_ids[0] if include_prompt_in_output else generate_ids[0][prompt_tokens:]
         output = pixtral_model['processor'].decode(output_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False)
         print(output)
@@ -101,23 +154,24 @@ class PixtralGenerateText:
 
 
 class LlamaVisionModelLoader:
-    """Loads a Llama 3.2 Vision model. Add models as folders inside the `ComfyUI/models/llama-vision` folder. Each model folder should contain a standard transformers loadable safetensors model along with a tokenizer and any config files needed."""
+    """Loads a Llama 3.2 Vision model. Add models as folders inside the `ComfyUI/models/LLM` folder. Each model folder should contain a standard transformers loadable safetensors model along with a tokenizer and any config files needed."""
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "model_name": ([item.name for item in Path(llama_vision_model_dir).iterdir() if item.is_dir()],),
+                "model_name": (get_models_of_type("MllamaForConditionalGeneration"),),
             }
         }
 
-    RETURN_TYPES = ("LLAMA_VISION_MODEL",)
+    RETURN_TYPES = ("VISION_MODEL",)
     FUNCTION = "load_model"
     CATEGORY = "PixtralLlamaVision/LlamaVision"
     TITLE = "Load Llama Vision Model"
 
     def load_model(self, model_name):
-        model_path = os.path.join(llama_vision_model_dir, model_name)
+        model_path = os.path.join(llm_model_dir, model_name)
         device = mm.get_torch_device()
+        print(f"Loading Llama Vision model: {model_name}")
         model = MllamaForConditionalGeneration.from_pretrained(
             model_path,
             use_safetensors=True,
@@ -136,13 +190,19 @@ class LlamaVisionGenerateText:
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "required": {
-                "llama_vision_model": ("LLAMA_VISION_MODEL",),
+            "optional": {
                 "images": ("IMAGE",),
+            },
+            "required": {
+                "llama_vision_model": ("VISION_MODEL",),
                 "prompt": ("STRING", {"default": "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n<|image|>Caption this image.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n", "multiline": True}),
                 "max_new_tokens": ("INT", {"default": 256, "min": 1, "max": 4096}),
                 "do_sample": ("BOOLEAN", {"default": True}),
-                "temperature": ("FLOAT", {"default": 0.3, "min": 0, "step": 0.1}),
+                "temperature": ("FLOAT", {"default": 0.3, "min": 0.0, "step": 0.1}),
+                "top_p": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.1}),
+                "top_k": ("INT", {"default": 40, "min": 1}),
+                # For some reason, including this causes the CUDA kernel to fail catastrophically? Didn't have this issue with Pixtral
+                #"repetition_penalty": ("FLOAT", {"default": 1.1}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
                 "include_prompt_in_output": ("BOOLEAN", {"default": False}),
             }
@@ -153,7 +213,7 @@ class LlamaVisionGenerateText:
     CATEGORY = "PixtralLlamaVision/LlamaVision"
     TITLE = "Generate Text with Llama Vision"
 
-    def generate_text(self, llama_vision_model, images, prompt, max_new_tokens, do_sample, temperature, seed, include_prompt_in_output):
+    def generate_text(self, llama_vision_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, seed, include_prompt_in_output):
         device = llama_vision_model['model'].device
         # I'm sure there is a way to do this without converting back to numpy and then PIL...
         # Llama Vision also requires PIL input for some reason, and the to_pil_image function requires channels to be the first dimension for a Tensor but the last dimension for a numpy array... Yeah idk
@@ -166,20 +226,175 @@ class LlamaVisionGenerateText:
         t0 = time.time()
         generate_ids = llama_vision_model['model'].generate(
             **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=do_sample,
-            temperature=temperature,
+            generation_config=GenerationConfig(
+                max_new_tokens=max_new_tokens,
+                do_sample=do_sample,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                #repetition_penalty=repetition_penalty,
+            ),
         )
         t1 = time.time()
         total_time = t1 - t0
         generated_tokens = len(generate_ids[0]) - prompt_tokens
         time_per_token = generated_tokens/total_time
         print(f"Generated {generated_tokens} tokens in {total_time:.3f} s ({time_per_token:.3f} tok/s)")
-        print(len(generate_ids[0][prompt_tokens:]))
         output_tokens = generate_ids[0] if include_prompt_in_output else generate_ids[0][prompt_tokens:]
         output = llama_vision_model['processor'].decode(output_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False)
         print(output)
         return (output,)
+
+
+class MolmoModelLoader:
+    """Loads a Molmo model. Add models as folders inside the `ComfyUI/models/LLM` folder. Each model folder should contain a standard transformers loadable safetensors model along with a tokenizer and any config files needed."""
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model_name": (get_models_of_type("MolmoForCausalLM"),),
+            }
+        }
+
+    RETURN_TYPES = ("VISION_MODEL",)
+    FUNCTION = "load_model"
+    CATEGORY = "PixtralLlamaVision/Molmo"
+    TITLE = "Load Molmo Model"
+
+    def load_model(self, model_name):
+        model_path = os.path.join(llm_model_dir, model_name)
+        device = mm.get_torch_device()
+        print(f"Loading Molmo model: {model_name}")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            use_safetensors=True,
+            device_map=device,
+            torch_dtype="auto",
+            trust_remote_code=True,
+        )
+        processor = AutoProcessor.from_pretrained(
+            model_path,
+            torch_dtype="auto",
+            trust_remote_code=True,
+        )
+        molmo_model = {
+            'model': model,
+            'processor': processor,
+        }
+        return (molmo_model,)
+
+
+class MolmoGenerateText:
+    """Generates text using a Molmo model. Takes a list of images and a string prompt as input. The prompt must contain an equal number of [IMG] tokens to the number of images passed in."""
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "optional": {
+                "images": ("IMAGE",),
+            },
+            "required": {
+                "molmo_model": ("VISION_MODEL",),
+                "prompt": ("STRING", {"default": "Describe this image. ", "multiline": True}),
+                "max_new_tokens": ("INT", {"default": 256, "min": 1, "max": 4096}),
+                "do_sample": ("BOOLEAN", {"default": True}),
+                "temperature": ("FLOAT", {"default": 0.3, "min": 0, "step": 0.1}),
+                "top_p": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.1}),
+                "top_k": ("INT", {"default": 40, "min": 1}),
+                # This doesn't seem to work for this model
+                #"repetition_penalty": ("FLOAT", {"default": 1.1}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
+                "include_prompt_in_output": ("BOOLEAN", {"default": False}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_text"
+    CATEGORY = "PixtralLlamaVision/Molmo"
+    TITLE = "Generate Text with Molmo"
+
+    def generate_text(self, molmo_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, seed, include_prompt_in_output):
+        device = molmo_model['model'].device
+        print(f"Batch of {images.shape} images")
+        image_list = [to_pil_image(image.numpy()) for image in images]
+        
+        inputs = molmo_model['processor'].process(images=image_list, text=prompt)
+        inputs = {k: v.to(device).unsqueeze(0) for k, v in inputs.items()}
+        
+        prompt_tokens = inputs["input_ids"].size(1)
+        print(f"Prompt tokens: {prompt_tokens}")
+        
+        set_seed(seed)
+        t0 = time.time()
+        output = molmo_model['model'].generate_from_batch(
+            inputs,
+            generation_config=GenerationConfig(
+                max_new_tokens=max_new_tokens,
+                do_sample=do_sample,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                #repetition_penalty=repetition_penalty,
+                stop_string="<|endoftext|>",
+            ),
+            tokenizer=molmo_model['processor'].tokenizer,
+        )
+        t1 = time.time()
+        
+        total_time = t1 - t0
+        generated_tokens = output.size(1) - prompt_tokens
+        time_per_token = generated_tokens/total_time
+        print(f"Generated {generated_tokens} tokens in {total_time:.3f} s ({time_per_token:.3f} tok/s)")
+        
+        output_tokens = output[0] if include_prompt_in_output else output[0, prompt_tokens:]
+        generated_text = molmo_model['processor'].tokenizer.decode(output_tokens, skip_special_tokens=True)
+        
+        print(generated_text)
+        return (generated_text,)
+
+
+class AutoVisionModelLoader:
+    """Loads a vision model. Add models as folders inside the `ComfyUI/models/LLM` folder. Each model folder should contain a standard transformers loadable safetensors model along with a tokenizer and any config files needed. Use `trust_remote_code` at your own risk."""
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model_name": (get_models_with_config(),),
+                "trust_remote_code": ("BOOLEAN", {"default": False}),
+            }
+        }
+
+    RETURN_TYPES = ("VISION_MODEL",)
+    FUNCTION = "load_model"
+    CATEGORY = "PixtralLlamaVision/VLM"
+    TITLE = "Load Vision Model"
+
+    def load_model(self, model_name, trust_remote_code):
+        model_path = os.path.join(llm_model_dir, model_name)
+        device = mm.get_torch_device()
+        try:
+            model_type_name = get_model_type(model_path)
+            model_type = model_type_map.get(model_type_name, AutoModelForCausalLM)
+            print(f"Loading vision model: {model_name} of type {model_type_name}")
+            model = model_type.from_pretrained(
+                model_path,
+                use_safetensors=True,
+                device_map=device,
+                torch_dtype="auto",
+                trust_remote_code=trust_remote_code,
+            )
+            processor = AutoProcessor.from_pretrained(
+                model_path,
+                torch_dtype="auto",
+                trust_remote_code=trust_remote_code,
+            )
+            vision_model = {
+                'model': model,
+                'processor': processor,
+            }
+            return (vision_model,)
+        except Exception as e:
+            print(f"Error loading vision model: {e}")
+            raise
 
 
 # Utility for bounding boxes (I'm sure this has been done before but I just wanted to try it out to see how well Pixtral can do it)
@@ -431,6 +646,9 @@ NODE_CLASS_MAPPINGS = {
     #"PixtralTextEncode": PixtralTextEncode,
     "LlamaVisionModelLoader": LlamaVisionModelLoader,
     "LlamaVisionGenerateText": LlamaVisionGenerateText,
+    "MolmoModelLoader": MolmoModelLoader,
+    "MolmoGenerateText": MolmoGenerateText,
+    "AutoVisionModelLoader": AutoVisionModelLoader,
     "RegexSplitString": RegexSplitString,
     "RegexSearch": RegexSearch,
     "RegexFindAll": RegexFindAll,

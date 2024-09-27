@@ -1,11 +1,17 @@
 # ComfyUI-PixtralLlamaVision
- For loading and running Pixtral and Llama 3.2 Vision models
 
-Includes four nodes:
+For loading and running Pixtral, Llama 3.2 Vision, and Molmo models. 
+
+Important change compared to last version: Models should now be placed in the `ComfyUI/models/LLM` folder for better compatibility with other custom nodes for LLM. I apologize for having to move your models around if you were using the previous version.
+
+Includes nodes for loading and running VLMs:
+- Load Vision Model
 - Load Pixtral Model
-- Generate Text with Pixtral
 - Load Llama Vision Model
+- Load Molmo Model
+- Generate Text with Pixtral
 - Generate Text with Llama Vision
+- Generate Text with Molmo
 
 Along with some utility nodes for working with text:
 - Parse Bounding Boxes
@@ -17,14 +23,24 @@ Along with some utility nodes for working with text:
 - Select Index
 - Slice List
 
+The Load Vision Model node is able to load any of these model types, but it will also be able to load other models in the LLM folder. Other model types, like Florence2, will not work with these nodes, though.
+
+The other model loading nodes are for specific model types and will filter the list to just that model type.
+
+The text generation nodes are model-specific. Pixtral seems to be the only one out of these that currently supports repetition penalty. The prompts used in these nodes are raw, and need to include the special tokens to create an instruction or chat template. I plan to add some more nodes for creating prompts following a template like this, though.
+
+Use `trust_remote_code` at your own risk. (I think Molmo looks safe, though)
+
+I will probably rename this repo (again) pretty soon, considering it's expanded beyond just being for Pixtral.
+
 ## Installation
 
-Available in [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager) as ComfyUI-PixtralLlamaVision. When installed from ComfyUI-Manager, the required packages will be installed automatically.
+Available in [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager) as ComfyUI-PixtralLlamaVision. When installed from ComfyUI-Manager, the required packages will be installed automatically. You may need to update your pytorch version.
 
 If you install by cloning this repo into your custom nodes folder, you'll need to install `transformers >= 4.45.0` to load Pixtral and Llama Vision models, and you'll also need to make sure `accelerate`, `bitsandbytes`, and `torchvision` are updated. You can install these in the windows portable version of ComfyUI with:
 `python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-PixtralLlamaVision\requirements.txt`
 
-Models should be placed in the `ComfyUI/models/pixtral` and `ComfyUI/models/llama-vision` folders, with each model inside a folder with the `model.safetensors` file along with any config files and the tokenizer.
+Models should be placed in the `ComfyUI/models/LLM` folder, with each model inside a folder with the `model.safetensors` file along with any config files and the tokenizer.
 
 You can get a 4-bit quantized version of Pixtral-12B and/or Llama-3.2-11B-Vision-Instruct which is compatible with these custom nodes here:
 
