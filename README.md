@@ -21,11 +21,8 @@ Along with some utility nodes for working with text:
 
 Available in [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager) as ComfyUI-PixtralLlamaVision. When installed from ComfyUI-Manager, the required packages will be installed automatically.
 
-If you install by cloning this repo into your custom nodes folder, you'll need to install `transformers >= 4.45.0` to load Pixtral and Llama Vision models:
-`python_embeded\python.exe -m pip install transformers --upgrade`
-
-Also install bitsandbytes if you don't have it already:
-`python_embeded\python.exe -m pip install bitsandbytes`
+If you install by cloning this repo into your custom nodes folder, you'll need to install `transformers >= 4.45.0` to load Pixtral and Llama Vision models, and you'll also need to make sure `accelerate`, `bitsandbytes`, and `torchvision` are updated. You can install these in the windows portable version of ComfyUI with:
+`python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-PixtralLlamaVision\requirements.txt`
 
 Models should be placed in the `ComfyUI/models/pixtral` and `ComfyUI/models/llama-vision` folders, with each model inside a folder with the `model.safetensors` file along with any config files and the tokenizer.
 
