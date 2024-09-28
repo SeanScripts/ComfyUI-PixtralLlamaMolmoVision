@@ -1,0 +1,363 @@
+{
+  "last_node_id": 58,
+  "last_link_id": 114,
+  "nodes": [
+    {
+      "id": 56,
+      "type": "ParsePoints",
+      "pos": {
+        "0": 1086,
+        "1": 335
+      },
+      "size": [
+        315,
+        122
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string",
+          "type": "STRING",
+          "link": 111,
+          "widget": {
+            "name": "string"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "POINT",
+          "type": "POINT",
+          "links": [
+            112
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        },
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ParsePoints"
+      },
+      "widgets_values": [
+        "",
+        ""
+      ]
+    },
+    {
+      "id": 54,
+      "type": "MolmoModelLoader",
+      "pos": {
+        "0": 313,
+        "1": 248
+      },
+      "size": {
+        "0": 315,
+        "1": 58
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VISION_MODEL",
+          "type": "VISION_MODEL",
+          "links": [
+            108
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MolmoModelLoader"
+      },
+      "widgets_values": [
+        "molmo-7B-D-bnb-4bit"
+      ]
+    },
+    {
+      "id": 58,
+      "type": "PreviewImage",
+      "pos": {
+        "0": 1771,
+        "1": 334
+      },
+      "size": [
+        382.1099039489918,
+        403.9147862091281
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 113
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 4,
+      "type": "LoadImage",
+      "pos": {
+        "0": 324,
+        "1": 358
+      },
+      "size": {
+        "0": 294.7367248535156,
+        "1": 375.8291931152344
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            109,
+            114
+          ],
+          "slot_index": 0,
+          "shape": 3
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "Flux_00207_ (1).png",
+        "image"
+      ]
+    },
+    {
+      "id": 57,
+      "type": "PlotPoints",
+      "pos": {
+        "0": 1429,
+        "1": 340
+      },
+      "size": {
+        "0": 315,
+        "1": 150
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "points",
+          "type": "POINT",
+          "link": 112
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 114
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            113
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PlotPoints"
+      },
+      "widgets_values": [
+        10,
+        40,
+        "#ff00ff",
+        ""
+      ]
+    },
+    {
+      "id": 55,
+      "type": "MolmoGenerateText",
+      "pos": {
+        "0": 656,
+        "1": 301
+      },
+      "size": {
+        "0": 400,
+        "1": 312
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "molmo_model",
+          "type": "VISION_MODEL",
+          "link": 108
+        },
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 109
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            110,
+            111
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MolmoGenerateText"
+      },
+      "widgets_values": [
+        "Count the people in this image.",
+        512,
+        true,
+        0.3,
+        0.9,
+        40,
+        "<|endoftext|>",
+        2130269981,
+        "randomize",
+        false
+      ]
+    },
+    {
+      "id": 3,
+      "type": "Display Any (rgthree)",
+      "pos": {
+        "0": 1109,
+        "1": 6
+      },
+      "size": [
+        608.1341091642305,
+        278.6934670890276
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 110,
+          "dir": 3
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "Display Any (rgthree)"
+      },
+      "widgets_values": [
+        ""
+      ]
+    }
+  ],
+  "links": [
+    [
+      108,
+      54,
+      0,
+      55,
+      0,
+      "VISION_MODEL"
+    ],
+    [
+      109,
+      4,
+      0,
+      55,
+      1,
+      "IMAGE"
+    ],
+    [
+      110,
+      55,
+      0,
+      3,
+      0,
+      "*"
+    ],
+    [
+      111,
+      55,
+      0,
+      56,
+      0,
+      "STRING"
+    ],
+    [
+      112,
+      56,
+      0,
+      57,
+      0,
+      "POINT"
+    ],
+    [
+      113,
+      57,
+      0,
+      58,
+      0,
+      "IMAGE"
+    ],
+    [
+      114,
+      4,
+      0,
+      57,
+      1,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 1.2284597357367266,
+      "offset": [
+        -254.51223899431685,
+        74.38924093465424
+      ]
+    }
+  },
+  "version": 0.4
+}

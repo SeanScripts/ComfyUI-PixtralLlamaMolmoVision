@@ -15,6 +15,8 @@ Includes nodes for loading and running VLMs:
 
 Along with some utility nodes for working with text:
 - Parse Bounding Boxes
+- Parse Points
+- Plot Points
 - Regex Split String
 - Regex Search
 - Regex Find All
@@ -53,18 +55,26 @@ Unfortunately, the Pixtral nf4 model has considerably degraded performance on so
 ## Examples
 
 Example Pixtral image captioning (not saving the output to a text file in this example):
-![Example Pixtral image captioning workflow](pixtral_caption_example.jpg)
+![Example Pixtral image captioning workflow](examples/pixtral_caption_example.jpg)
 
 Both models should work very well for image captioning, even in 4-bit quantization. You can also customize your captioning instructions.
 
 Example Pixtral image comparison:
-![Example Pixtral image comparison workflow](pixtral_comparison_example.jpg)
+![Example Pixtral image comparison workflow](examples/pixtral_comparison_example.jpg)
 
 I haven't been able to get image comparison to work well at all with Llama Vision. It doesn't give any errors, but the multi-image understanding just isn't there. The image tokens have to be **before** the question/instruction and consecutive for the model to even be able to see both images at once (I found this out by looking at the image preprocessor cross-attention implementation), and even then, it seems to randomly mix up which is the first/second, left/right, the colors between them and other details. It doesn't seem usable for purposes involving two images in the same message, in my opinion. Not sure whether the non-quantized model is better at this.
 
 Since Pixtral directly tokenizes the input images, it's able to handle them inline in the context, with any number of images of any aspect ratio, but it's limited by token lengths, since each image can be around 1000 tokens.
 
 Example Llama Vision object detection with bounding box:
-![Example Llama Vision object detection with bounding box workflow](llama_vision_bounding_box_example.jpg)
+![Example Llama Vision object detection with bounding box workflow](examples/llama_vision_bounding_box_example.jpg)
 
 Both models kind of work for this, but not that well. They definitely have some understanding of the positions of objects in the image, though. Maybe it needs a better prompt. Or a non-quantized model. Or a finetune. But it does sometimes work.
+
+Example Molmo counting:
+![Example Molmo counting example](examples/molmo_counting_example.jpg)
+
+Example Molmo pointing, with labels:
+![Example Molmo pointing example](examples/molmo_multi_pointing_example.jpg)
+
+I wasn't able to get it to point at both objects with a single prompt for some reason (it would just assign both labels to both points), but splitting it into two simple prompts like this isn't too bad.

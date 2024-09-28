@@ -9,14 +9,17 @@ from transformers import (
     AutoProcessor,
     BitsAndBytesConfig,
     GenerationConfig,
+    StopStringCriteria,
     set_seed
 )
 from torchvision.transforms.functional import to_pil_image
+import numpy as np
+import torch
 
 import json
 import os
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw
 import re
 import time
 
@@ -110,6 +113,7 @@ class PixtralGenerateText:
                 "top_p": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.1}),
                 "top_k": ("INT", {"default": 40, "min": 1}),
                 "repetition_penalty": ("FLOAT", {"default": 1.1}),
+                "stop_strings": ("STRING", {"default": "</s>"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
                 "include_prompt_in_output": ("BOOLEAN", {"default": False}),
             }
@@ -120,7 +124,7 @@ class PixtralGenerateText:
     CATEGORY = "PixtralLlamaVision/Pixtral"
     TITLE = "Generate Text with Pixtral"
 
-    def generate_text(self, pixtral_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, repetition_penalty, seed, include_prompt_in_output):
+    def generate_text(self, pixtral_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, repetition_penalty, stop_strings, seed, include_prompt_in_output):
         device = pixtral_model['model'].device
         # I'm sure there is a way to do this without converting back to numpy and then PIL...
         # Pixtral requires PIL input for some reason, and the to_pil_image function requires channels to be the first dimension for a Tensor but the last dimension for a numpy array... Yeah idk
@@ -129,6 +133,7 @@ class PixtralGenerateText:
         inputs = pixtral_model['processor'](images=image_list, text=prompt, return_tensors="pt").to(device)
         prompt_tokens = len(inputs['input_ids'][0])
         print(f"Prompt tokens: {prompt_tokens}")
+        stop_strings_list = stop_strings.split(",")
         set_seed(seed)
         t0 = time.time()
         generate_ids = pixtral_model['model'].generate(
@@ -140,7 +145,8 @@ class PixtralGenerateText:
                 top_p=top_p,
                 top_k=top_k,
                 repetition_penalty=repetition_penalty,
-            )
+            ),
+            stopping_criteria=[StopStringCriteria(tokenizer=pixtral_model['processor'].tokenizer, stop_strings=stop_strings_list)],
         )
         t1 = time.time()
         total_time = t1 - t0
@@ -203,6 +209,7 @@ class LlamaVisionGenerateText:
                 "top_k": ("INT", {"default": 40, "min": 1}),
                 # For some reason, including this causes the CUDA kernel to fail catastrophically? Didn't have this issue with Pixtral
                 #"repetition_penalty": ("FLOAT", {"default": 1.1}),
+                "stop_strings": ("STRING", {"default": "<|eot_id|>"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
                 "include_prompt_in_output": ("BOOLEAN", {"default": False}),
             }
@@ -213,7 +220,7 @@ class LlamaVisionGenerateText:
     CATEGORY = "PixtralLlamaVision/LlamaVision"
     TITLE = "Generate Text with Llama Vision"
 
-    def generate_text(self, llama_vision_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, seed, include_prompt_in_output):
+    def generate_text(self, llama_vision_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output):
         device = llama_vision_model['model'].device
         # I'm sure there is a way to do this without converting back to numpy and then PIL...
         # Llama Vision also requires PIL input for some reason, and the to_pil_image function requires channels to be the first dimension for a Tensor but the last dimension for a numpy array... Yeah idk
@@ -222,6 +229,7 @@ class LlamaVisionGenerateText:
         inputs = llama_vision_model['processor'](images=image_list, text=prompt, return_tensors="pt").to(device)
         prompt_tokens = len(inputs['input_ids'][0])
         print(f"Prompt tokens: {prompt_tokens}")
+        stop_strings_list = stop_strings.split(",")
         set_seed(seed)
         t0 = time.time()
         generate_ids = llama_vision_model['model'].generate(
@@ -234,6 +242,7 @@ class LlamaVisionGenerateText:
                 top_k=top_k,
                 #repetition_penalty=repetition_penalty,
             ),
+            stopping_criteria=[StopStringCriteria(tokenizer=llama_vision_model['processor'].tokenizer, stop_strings=stop_strings_list)],
         )
         t1 = time.time()
         total_time = t1 - t0
@@ -302,6 +311,7 @@ class MolmoGenerateText:
                 "top_k": ("INT", {"default": 40, "min": 1}),
                 # This doesn't seem to work for this model
                 #"repetition_penalty": ("FLOAT", {"default": 1.1}),
+                "stop_strings": ("STRING", {"default": "<|endoftext|>"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
                 "include_prompt_in_output": ("BOOLEAN", {"default": False}),
             }
@@ -312,7 +322,7 @@ class MolmoGenerateText:
     CATEGORY = "PixtralLlamaVision/Molmo"
     TITLE = "Generate Text with Molmo"
 
-    def generate_text(self, molmo_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, seed, include_prompt_in_output):
+    def generate_text(self, molmo_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output):
         device = molmo_model['model'].device
         print(f"Batch of {images.shape} images")
         image_list = [to_pil_image(image.numpy()) for image in images]
@@ -322,6 +332,8 @@ class MolmoGenerateText:
         
         prompt_tokens = inputs["input_ids"].size(1)
         print(f"Prompt tokens: {prompt_tokens}")
+        
+        stop_strings_list = stop_strings.split(",")
         
         set_seed(seed)
         t0 = time.time()
@@ -334,8 +346,8 @@ class MolmoGenerateText:
                 top_p=top_p,
                 top_k=top_k,
                 #repetition_penalty=repetition_penalty,
-                stop_string="<|endoftext|>",
             ),
+            stopping_criteria=[StopStringCriteria(tokenizer=molmo_model['processor'].tokenizer, stop_strings=stop_strings_list)],
             tokenizer=molmo_model['processor'].tokenizer,
         )
         t1 = time.time()
@@ -456,6 +468,132 @@ class ParseBoundingBoxes:
                 print(f"Failed to parse bbox: {match}")
 
         return (bboxes,)
+
+
+class ParsePoints:
+    """<points x1=\"43.6\" y1=\"37.7\" x2=\"69.6\" y2=\"41.1\" alt=\"eyes\">eyes</points>"""
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "string": ("STRING",),
+                "filter": ("STRING",),
+            }
+        }
+
+    RETURN_TYPES = ("POINT", "STRING", "STRING")
+    FUNCTION = "generate_points"
+    CATEGORY = "PixtralLlamaVision/Utility"
+    TITLE = "Parse Points"
+
+    def generate_points(self, string, filter):
+        point_batches = []
+        label_batches = []
+        alt_label_batches = []
+        if type(string) != list:
+            string = [string] # batch 1
+        for s in string:
+            points = []
+            labels = []
+            alt_labels = []
+            # Tried to design this regex in a way where even if the message gets cut off by the token limit, it finds the points
+            # Another absolutely ridiculous looking regex
+            for match in re.findall(r"""<points?\s*([xy\d\.="\s]*?)\s*(?:alt="([^"]*)")?(?=>|$)>?([^<]*)""", s, flags=re.M):
+                try:
+                    data = match[0]
+                    if len(match) > 1:
+                        alt = match[1]
+                        if len(match) > 2:
+                            inner = match[2]
+                        else:
+                            inner = ""
+                    else:
+                        alt = ""
+                        inner = ""
+                    
+                    # Roughly matching
+                    if alt == "" or filter.lower() in alt.lower() or filter.lower() in inner.lower():
+                        data_parts = data.split(" ")
+                        for i in range(len(data_parts)//2):
+                            # Points from Molmo are expressed as percentages
+                            x = float(data_parts[2*i].split('"')[1])/100.0
+                            y = float(data_parts[2*i+1].split('"')[1])/100.0
+                            
+                            # Check for duplicates
+                            for point, label, alt_label in zip(points, labels, alt_labels):
+                                if point[0] == x and point[1] == y and label == inner and alt_label == alt:
+                                    print(f"Duplicate point ({x}, {y}, {alt}, {inner})")
+                                    continue
+
+                            points.append([x, y])
+                            labels.append(inner)
+                            alt_labels.append(alt) # I'm not really convinced alt even matters
+                    else:
+                        print(f"Non-matching filter for {match}")
+                except Exception as e:
+                    print(f"Failed to parse points: {match}: {e}")
+            point_batches.append(points)
+            label_batches.append(labels)
+            alt_label_batches.append(alt_labels)
+        return (np.array(point_batches), np.array(label_batches), np.array(alt_label_batches))
+
+
+class PlotPoints:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "optional": {
+                "labels": ("STRING",),
+            },
+            "required": {
+                "points": ("POINT",),
+                "image": ("IMAGE",),
+                "size": ("INT", {"default": 5, "min": 1, "step": 1}),
+                "font_size": ("INT", {"default": 40}),
+                "color": ("STRING", {"default": "#0000ff"}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "plot_points"
+    CATEGORY = "PixtralLlamaVision/Utility"
+    TITLE = "Plot Points"
+
+    def plot_points(self, points, labels, image, size, font_size, color):
+        image_width = image.shape[2]
+        image_height = image.shape[1]
+        
+        if labels is None or len(labels) == 0 or font_size == 0:
+            labels = np.array([["" for point in point_list] for point_list in points])
+        
+        batch_size = image.shape[0]
+        if len(points) != len(labels) or len(points) != image.shape[0]:
+            print(f"Warning: Batch size mismatch: Image {image.shape}, points {points.shape}, labels {labels.shape}")
+            batch_size = min(image.shape[0], len(points), len(labels))
+        
+        # font = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", font_size)
+        # I might have overengineered this, it doesn't seem like the model can label separate objects in a single call. But you can concatenate the strings anyway.
+        colors = [color]
+        if "," in color:
+            colors = color.split(",")
+        color_map = {"": colors[0]}
+        for i, label in enumerate(np.unique(labels)):
+            color_map[label] = colors[i%len(colors)]
+        
+        # Add points to image (which is a tensor of floats of shape (batch, height, width, channels)
+        changed_images = []
+        for img, point_list, label_list in zip(image, points, labels):
+            temp_image = to_pil_image(img.numpy())
+            draw = ImageDraw.Draw(temp_image)
+            for point, label in zip(point_list, label_list):
+                x = int(image_width*point[0])
+                y = int(image_height*point[1])
+                draw.circle((x, y), fill=color_map[label], outline=color_map[label], radius=size)
+                if label != "":
+                    draw.text((x, y-size), label, fill=color_map[label], font_size=font_size, anchor='md')
+            output_image = np.array(temp_image)/0xff
+            changed_images.append(output_image)
+        return (torch.Tensor(np.array(changed_images)),)
 
 
 def process_regex_flags(flags):
@@ -655,6 +793,8 @@ NODE_CLASS_MAPPINGS = {
     "RegexSubstitution": RegexSubstitution,
     "JoinString": JoinString,
     "ParseBoundingBoxes": ParseBoundingBoxes,
+    "ParsePoints": ParsePoints,
+    "PlotPoints": PlotPoints,
     "SelectIndex": SelectIndex,
     "SliceList": SliceList,
 }
