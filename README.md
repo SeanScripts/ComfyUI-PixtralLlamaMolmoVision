@@ -72,9 +72,9 @@ Example Llama Vision object detection with bounding box:
 Both models kind of work for this, but not that well. They definitely have some understanding of the positions of objects in the image, though. Maybe it needs a better prompt. Or a non-quantized model. Or a finetune. But it does sometimes work.
 
 Example Molmo counting:
-![Example Molmo counting example](examples/molmo_counting_example.jpg)
+![Example Molmo counting workflow](examples/molmo_count_example.jpg)
 
 Example Molmo pointing, with labels:
-![Example Molmo pointing example](examples/molmo_multi_pointing_example.jpg)
+![Example Molmo pointing workflow](examples/molmo_multi_pointing_example.jpg)
 
 I wasn't able to get it to point at both objects with a single prompt for some reason (it would just assign both labels to both points), but splitting it into two simple prompts like this isn't too bad.
