@@ -1,6 +1,6 @@
 import comfy.utils
 import comfy.model_management as mm
-from comfy.model_patcher import ModelPatcher
+#from comfy.model_patcher import ModelPatcher
 import folder_paths
 
 from transformers import (
