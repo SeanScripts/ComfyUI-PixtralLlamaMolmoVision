@@ -1,0 +1,499 @@
+{
+  "last_node_id": 24,
+  "last_link_id": 24,
+  "nodes": [
+    {
+      "id": 17,
+      "type": "Note",
+      "pos": {
+        "0": 1864,
+        "1": 871
+      },
+      "size": [
+        260.5903497028885,
+        137.34932108462544
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Folder within the ComfyUI output folder where you want the images + captions to be saved with the same name (1.png, 1.txt, etc.)"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 16,
+      "type": "Note",
+      "pos": {
+        "0": 1864,
+        "1": 431
+      },
+      "size": [
+        282.40853152107,
+        132.34932108462544
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Path here should be the same as the path below, but as a relative path from where you are running ComfyUI, or as an absolute path"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 18,
+      "type": "Note",
+      "pos": {
+        "0": 267,
+        "1": 795
+      },
+      "size": [
+        279.31762243016135,
+        145.62204835735247
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Path to a folder with the images you want to caption (filenames don't matter).\nimage_load_cap = 0 will load all the images from the folder."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 24,
+      "type": "MolmoGenerateText",
+      "pos": {
+        "0": 990,
+        "1": 401
+      },
+      "size": {
+        "0": 400,
+        "1": 362
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "molmo_model",
+          "type": "VISION_MODEL",
+          "link": 22
+        },
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 23
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            24
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MolmoGenerateText"
+      },
+      "widgets_values": [
+        "",
+        "Describe this image in detail. ",
+        256,
+        true,
+        0.3,
+        0.9,
+        40,
+        "<|endoftext|>",
+        3561946545,
+        "randomize",
+        false
+      ]
+    },
+    {
+      "id": 23,
+      "type": "MolmoModelLoader",
+      "pos": {
+        "0": 572,
+        "1": 407
+      },
+      "size": {
+        "0": 315,
+        "1": 58
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VISION_MODEL",
+          "type": "VISION_MODEL",
+          "links": [
+            22
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MolmoModelLoader"
+      },
+      "widgets_values": [
+        "molmo-7B-D-bnb-4bit"
+      ]
+    },
+    {
+      "id": 19,
+      "type": "Note",
+      "pos": {
+        "0": 290,
+        "1": 368
+      },
+      "size": [
+        264.5454611197921,
+        134.54546865653583
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Llama 3.2 11B Vision and Molmo are probably better quality than Pixtral for this"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 8,
+      "type": "Save Text File",
+      "pos": {
+        "0": 1537,
+        "1": 407
+      },
+      "size": [
+        303.044895157434,
+        174
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 24,
+          "widget": {
+            "name": "text"
+          }
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": 9,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "Save Text File"
+      },
+      "widgets_values": [
+        "",
+        ".\\ComfyUI\\output\\images_with_captions",
+        "",
+        "",
+        0,
+        ".txt",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "ListCounter //Inspire",
+      "pos": {
+        "0": 954,
+        "1": 864
+      },
+      "size": {
+        "0": 210,
+        "1": 58
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "signal",
+          "type": "*",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            1
+          ],
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ListCounter //Inspire"
+      },
+      "widgets_values": [
+        1
+      ]
+    },
+    {
+      "id": 6,
+      "type": "SomethingToString",
+      "pos": {
+        "0": 1223,
+        "1": 865
+      },
+      "size": [
+        210,
+        82
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input",
+          "type": "*",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            9,
+            14,
+            15
+          ],
+          "slot_index": 0,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SomethingToString"
+      },
+      "widgets_values": [
+        "",
+        ""
+      ]
+    },
+    {
+      "id": 1,
+      "type": "LoadImageListFromDir //Inspire",
+      "pos": {
+        "0": 570,
+        "1": 786
+      },
+      "size": {
+        "0": 315,
+        "1": 170
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            3,
+            13,
+            23
+          ],
+          "slot_index": 0,
+          "shape": 6
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "shape": 6
+        },
+        {
+          "name": "FILE PATH",
+          "type": "STRING",
+          "links": null,
+          "shape": 6
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImageListFromDir //Inspire"
+      },
+      "widgets_values": [
+        "E:\\datasets\\example",
+        0,
+        0,
+        false
+      ]
+    },
+    {
+      "id": 13,
+      "type": "> Save Image",
+      "pos": {
+        "0": 1540,
+        "1": 790
+      },
+      "size": [
+        299.77216788470673,
+        406
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 13
+        },
+        {
+          "name": "filename_opt",
+          "type": "STRING",
+          "link": 14,
+          "widget": {
+            "name": "filename_opt"
+          }
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "link": 15,
+          "widget": {
+            "name": "filename_prefix"
+          }
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "> Save Image"
+      },
+      "widgets_values": [
+        "",
+        "images_with_captions",
+        false,
+        false,
+        "png",
+        100,
+        ""
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      4,
+      0,
+      6,
+      0,
+      "*"
+    ],
+    [
+      3,
+      1,
+      0,
+      4,
+      0,
+      "*"
+    ],
+    [
+      9,
+      6,
+      0,
+      8,
+      1,
+      "STRING"
+    ],
+    [
+      13,
+      1,
+      0,
+      13,
+      0,
+      "IMAGE"
+    ],
+    [
+      14,
+      6,
+      0,
+      13,
+      1,
+      "STRING"
+    ],
+    [
+      15,
+      6,
+      0,
+      13,
+      2,
+      "STRING"
+    ],
+    [
+      22,
+      23,
+      0,
+      24,
+      0,
+      "VISION_MODEL"
+    ],
+    [
+      23,
+      1,
+      0,
+      24,
+      1,
+      "IMAGE"
+    ],
+    [
+      24,
+      24,
+      0,
+      8,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 1.1,
+      "offset": [
+        -123.68125879379771,
+        -106.53113926644365
+      ]
+    }
+  },
+  "version": 0.4
+}

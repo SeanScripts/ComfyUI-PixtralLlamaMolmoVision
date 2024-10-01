@@ -29,11 +29,15 @@ The Load Vision Model node is able to load any of these model types, but it will
 
 The other model loading nodes are for specific model types and will filter the list to just that model type.
 
-The text generation nodes are model-specific. Pixtral seems to be the only one out of these that currently supports repetition penalty. The prompts used in these nodes are raw, and need to include the special tokens to create an instruction or chat template. I plan to add some more nodes for creating prompts following a template like this, though.
+The text generation nodes are model-specific. Pixtral seems to be the only one out of these that currently supports repetition penalty. I plan to add some more nodes for creating prompts following a chat sequence.
+
+The Generate Text with Pixtral node can take the `[IMG]` special token in the prompt, and should include it for as many images as you want to process in a single prompt. If these tags aren't added, they will be automatically added to the beginning of your prompt. The Llama and Molmo models will add the images to the beginning of the prompt automatically, and while they do support processing multiple images at once, they don't support including multiple images in different places in the prompt like this.
+
+System prompts are optional. I didn't include them for Pixtral because the current setup is already using the `[INST]` special token, so the pixtral prompting is already like a system prompt rather than a user conversation. I might change this later.
 
 Use `trust_remote_code` at your own risk. (I think Molmo looks safe, though)
 
-I will probably rename this repo (again) pretty soon, considering it's expanded beyond just being for Pixtral.
+I will probably rename this repo (again) pretty soon, considering it's expanded beyond just being for Pixtral. Is "PixtralLlamaMolmoVision" too much? ...Nah.
 
 ## Installation
 
@@ -57,19 +61,26 @@ Unfortunately, the Pixtral nf4 model has considerably degraded performance on so
 Example Pixtral image captioning (not saving the output to a text file in this example):
 ![Example Pixtral image captioning workflow](examples/pixtral_caption_example.jpg)
 
-Both models should work very well for image captioning, even in 4-bit quantization. You can also customize your captioning instructions.
+All of these models should work very well for image captioning, even in 4-bit quantization. You can also customize your captioning instructions. Larger images might not work as well with Pixtral, so scaling them down to something like 512 x 512 before sending them to the text generation node might be a good idea. It's also worth noting that the nf4 Pixtral model has significantly degraded performance on images which consist of mainly text.
+
+Example Molmo dataset captioning for a LoRA:
+![Example dataset captioning workflow](examples/dataset_captioning_example.jpg)
+
+This workflow sends a list of images to the image generation node to caption each of them sequentially, and creates images and text files in a folder with names `1.png`, `1.txt`, etc for easy LoRA training setup.
+
+Note that for captioning each image separately, this input should be a list, not a batch of images, because these models can take multiple images as input for a single generation. Currently these nodes don't support batched text generation, but I might add that in the future. Doing one text generation task at a time is probably better for people with normal amounts of VRAM though.
 
 Example Pixtral image comparison:
 ![Example Pixtral image comparison workflow](examples/pixtral_comparison_example.jpg)
 
 I haven't been able to get image comparison to work well at all with Llama Vision. It doesn't give any errors, but the multi-image understanding just isn't there. The image tokens have to be **before** the question/instruction and consecutive for the model to even be able to see both images at once (I found this out by looking at the image preprocessor cross-attention implementation), and even then, it seems to randomly mix up which is the first/second, left/right, the colors between them and other details. It doesn't seem usable for purposes involving two images in the same message, in my opinion. Not sure whether the non-quantized model is better at this.
 
-Since Pixtral directly tokenizes the input images, it's able to handle them inline in the context, with any number of images of any aspect ratio, but it's limited by token lengths, since each image can be around 1000 tokens.
+Since Pixtral directly tokenizes the input images, it's able to handle them inline in the context, with any number of images of any aspect ratio, but it's limited by token lengths, since each image can be around 1000 - 4000 tokens.
 
 Example Llama Vision object detection with bounding box:
 ![Example Llama Vision object detection with bounding box workflow](examples/llama_vision_bounding_box_example.jpg)
 
-Both models kind of work for this, but not that well. They definitely have some understanding of the positions of objects in the image, though. Maybe it needs a better prompt. Or a non-quantized model. Or a finetune. But it does sometimes work.
+Both Pixtral and Llama kind of work for this, but not that well. They definitely have some understanding of the positions of objects in the image, though. Maybe it needs a better prompt. Or a non-quantized model. Or a finetune. But it does sometimes work. Surprisingly, Molmo is pretty bad at this, though it is capable of pointing and counting.
 
 Example Molmo counting:
 ![Example Molmo counting workflow](examples/molmo_count_example.jpg)
