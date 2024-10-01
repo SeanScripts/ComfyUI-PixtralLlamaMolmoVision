@@ -1,5 +1,6 @@
 import comfy.utils
 import comfy.model_management as mm
+from comfy.model_patcher import ModelPatcher
 import folder_paths
 
 from transformers import (
@@ -83,6 +84,7 @@ class PixtralModelLoader:
         model_path = os.path.join(llm_model_dir, model_name)
         device = mm.get_torch_device()
         print(f"Loading Pixtral model: {model_name}")
+        # TODO: Support ComfyUI Model Management
         model = LlavaForConditionalGeneration.from_pretrained(
             model_path,
             use_safetensors=True,
@@ -93,6 +95,13 @@ class PixtralModelLoader:
             'model': model,
             'processor': processor,
         }
+        # Doesn't work... I don't want it to patch the model, I just want it to be on the list of loaded models.
+        # AttributeError: property 'device' of 'LlavaForConditionalGeneration' object has no setter
+        # from calling: self.model.device = device_to
+        # Maybe it needs a wrapper class or something to work like this.
+        # For now I think I'll leave it as is...
+        #model_patcher = ModelPatcher(model, load_device=device, offload_device="cpu")
+        #mm.load_model_gpu(model_patcher)
         return (pixtral_model,)
 
 
@@ -106,7 +115,8 @@ class PixtralGenerateText:
             },
             "required": {
                 "pixtral_model": ("VISION_MODEL",),
-                "prompt": ("STRING", {"default": "<s>[INST]Caption this image:\n[IMG][/INST]", "multiline": True}),
+                #"system_prompt": ("STRING", {"default": "", "multiline": True}),
+                "prompt": ("STRING", {"default": "Caption this image:\n[IMG]", "multiline": True}),
                 "max_new_tokens": ("INT", {"default": 256, "min": 1, "max": 4096}),
                 "do_sample": ("BOOLEAN", {"default": True}),
                 "temperature": ("FLOAT", {"default": 0.3, "min": 0, "step": 0.1}),
@@ -128,8 +138,29 @@ class PixtralGenerateText:
         device = pixtral_model['model'].device
         # I'm sure there is a way to do this without converting back to numpy and then PIL...
         # Pixtral requires PIL input for some reason, and the to_pil_image function requires channels to be the first dimension for a Tensor but the last dimension for a numpy array... Yeah idk
-        print(f"Batch of {images.shape} images")
-        image_list = [to_pil_image(image.numpy()) for image in images]
+        if images != None and len(images) > 0:
+            print(f"Batch of {images.shape} images")
+            image_list = [to_pil_image(image.numpy()) for image in images]
+        
+        # Process prompt
+        # Example: <s>[INST]Caption this image:\n[IMG][/INST]
+        # Images can be placed anywhere, unlike the other models
+        image_tag_count = prompt.count("[IMG]")
+        added_image_tags = ""
+        if image_tag_count > 0 and (images is None or len(images) == 0):
+            print("Warning: Prompt contains image tags but no image")
+        elif image_tag_count < len(images):
+            added_image_tags = "[IMG]"*(len(images) - image_tag_count)
+            print("Warning: Adding extra images to the beginning of the prompt")
+        elif image_tag_count > len(images):
+            print("Warning: Too many image tags")
+        
+        # Not sure how system vs user input differs for this model yet
+        final_prompt = "<s>"
+        #if system_prompt != "":
+        #    final_prompt += f"[INST]{system_prompt}[/INST]"
+        final_prompt += f"[INST]{added_image_tags}{prompt}[/INST]"
+        
         inputs = pixtral_model['processor'](images=image_list, text=prompt, return_tensors="pt").to(device)
         prompt_tokens = len(inputs['input_ids'][0])
         print(f"Prompt tokens: {prompt_tokens}")
@@ -178,6 +209,7 @@ class LlamaVisionModelLoader:
         model_path = os.path.join(llm_model_dir, model_name)
         device = mm.get_torch_device()
         print(f"Loading Llama Vision model: {model_name}")
+        # TODO: Support ComfyUI Model Management
         model = MllamaForConditionalGeneration.from_pretrained(
             model_path,
             use_safetensors=True,
@@ -201,7 +233,8 @@ class LlamaVisionGenerateText:
             },
             "required": {
                 "llama_vision_model": ("VISION_MODEL",),
-                "prompt": ("STRING", {"default": "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n<|image|>Caption this image.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n", "multiline": True}),
+                "system_prompt": ("STRING", {"default": "", "multiline": True}),
+                "prompt": ("STRING", {"default": "Caption this image.", "multiline": True}),
                 "max_new_tokens": ("INT", {"default": 256, "min": 1, "max": 4096}),
                 "do_sample": ("BOOLEAN", {"default": True}),
                 "temperature": ("FLOAT", {"default": 0.3, "min": 0.0, "step": 0.1}),
@@ -220,13 +253,26 @@ class LlamaVisionGenerateText:
     CATEGORY = "PixtralLlamaVision/LlamaVision"
     TITLE = "Generate Text with Llama Vision"
 
-    def generate_text(self, llama_vision_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output):
+    # TODO: Support batching
+
+    def generate_text(self, llama_vision_model, images, system_prompt, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output):
         device = llama_vision_model['model'].device
         # I'm sure there is a way to do this without converting back to numpy and then PIL...
         # Llama Vision also requires PIL input for some reason, and the to_pil_image function requires channels to be the first dimension for a Tensor but the last dimension for a numpy array... Yeah idk
-        print(f"Batch of {images.shape} images")
-        image_list = [to_pil_image(image.numpy()) for image in images]
-        inputs = llama_vision_model['processor'](images=image_list, text=prompt, return_tensors="pt").to(device)
+        
+        if images != None and len(images) > 0:
+            print(f"Batch of {images.shape} images")
+            image_list = [to_pil_image(image.numpy()) for image in images]
+        
+        # Process prompt
+        image_tags = "<|image|>"*len(images)
+        final_prompt = "<|begin_of_text|>"
+        if system_prompt != "":
+            final_prompt += f"<|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|>\n\n"
+        final_prompt += f"<|start_header_id|>user<|end_header_id|>\n\n{image_tags}{prompt}<|eot_id|>\n\n"
+        final_prompt += "<|start_header_id|>assistant<|end_header_id|>\n\n"
+        
+        inputs = llama_vision_model['processor'](images=image_list, text=final_prompt, return_tensors="pt").to(device)
         prompt_tokens = len(inputs['input_ids'][0])
         print(f"Prompt tokens: {prompt_tokens}")
         stop_strings_list = stop_strings.split(",")
@@ -274,6 +320,7 @@ class MolmoModelLoader:
         model_path = os.path.join(llm_model_dir, model_name)
         device = mm.get_torch_device()
         print(f"Loading Molmo model: {model_name}")
+        # TODO: Support ComfyUI Model Management
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
             use_safetensors=True,
@@ -303,6 +350,7 @@ class MolmoGenerateText:
             },
             "required": {
                 "molmo_model": ("VISION_MODEL",),
+                "system_prompt": ("STRING", {"default": "", "multiline": True}),
                 "prompt": ("STRING", {"default": "Describe this image. ", "multiline": True}),
                 "max_new_tokens": ("INT", {"default": 256, "min": 1, "max": 4096}),
                 "do_sample": ("BOOLEAN", {"default": True}),
@@ -322,12 +370,29 @@ class MolmoGenerateText:
     CATEGORY = "PixtralLlamaVision/Molmo"
     TITLE = "Generate Text with Molmo"
 
-    def generate_text(self, molmo_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output):
+    # TODO: Support batching
+
+    def generate_text(self, molmo_model, images, system_prompt, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output):
         device = molmo_model['model'].device
-        print(f"Batch of {images.shape} images")
-        image_list = [to_pil_image(image.numpy()) for image in images]
         
-        inputs = molmo_model['processor'].process(images=image_list, text=prompt)
+        if images != None and len(images) > 0:
+            print(f"Batch of {images.shape} images")
+            image_list = [to_pil_image(image.numpy()) for image in images]
+        
+        # Process prompt
+        final_prompt = ""
+        if system_prompt != "":
+            final_prompt += f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
+        final_prompt += f"<|im_start|>user\n{prompt}<|im_end|>\n"
+        final_prompt += "<|im_start|>assistant\n"
+        
+        inputs = molmo_model['processor'].process(
+            images=image_list,
+            #system_prompt=system_prompt, # Doesn't do anything
+            text=final_prompt,
+            message_format="none",
+            always_start_with_space=False,
+        )
         inputs = {k: v.to(device).unsqueeze(0) for k, v in inputs.items()}
         
         prompt_tokens = inputs["input_ids"].size(1)
@@ -498,7 +563,7 @@ class ParsePoints:
             alt_labels = []
             # Tried to design this regex in a way where even if the message gets cut off by the token limit, it finds the points
             # Another absolutely ridiculous looking regex
-            for match in re.findall(r"""<points?\s*([xy\d\.="\s]*?)\s*(?:alt="([^"]*)")?(?=>|$)>?([^<]*)""", s, flags=re.M):
+            for match in re.findall(r"""[<\[]?points?\s*([xy\d\.="\s]*?)\s*(?:alt="([^"]*)")?(?=>|]|$)[>\]]?([^<\[]*)""", s, flags=re.M):
                 try:
                     data = match[0]
                     if len(match) > 1:
@@ -520,14 +585,16 @@ class ParsePoints:
                             y = float(data_parts[2*i+1].split('"')[1])/100.0
                             
                             # Check for duplicates
+                            valid = True
                             for point, label, alt_label in zip(points, labels, alt_labels):
                                 if point[0] == x and point[1] == y and label == inner and alt_label == alt:
                                     print(f"Duplicate point ({x}, {y}, {alt}, {inner})")
-                                    continue
-
-                            points.append([x, y])
-                            labels.append(inner)
-                            alt_labels.append(alt) # I'm not really convinced alt even matters
+                                    valid = False
+                                    break
+                            if valid:
+                                points.append([x, y])
+                                labels.append(inner)
+                                alt_labels.append(alt) # I'm not really convinced alt even matters
                     else:
                         print(f"Non-matching filter for {match}")
                 except Exception as e:
