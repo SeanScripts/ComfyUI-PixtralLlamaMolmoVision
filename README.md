@@ -1,4 +1,4 @@
-# ComfyUI-PixtralLlamaVision
+# ComfyUI-PixtralLlamaMolmoVision
 
 For loading and running Pixtral, Llama 3.2 Vision, and Molmo models. 
 
@@ -36,8 +36,6 @@ The Generate Text with Pixtral node can take the `[IMG]` special token in the pr
 System prompts are optional. I didn't include them for Pixtral because the current setup is already using the `[INST]` special token, so the pixtral prompting is already like a system prompt rather than a user conversation. I might change this later.
 
 Use `trust_remote_code` at your own risk. (I think Molmo looks safe, though)
-
-I will probably rename this repo (again) pretty soon, considering it's expanded beyond just being for Pixtral. Is "PixtralLlamaMolmoVision" too much? ...Nah.
 
 ## Installation
 

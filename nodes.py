@@ -82,26 +82,13 @@ class PixtralModelLoader:
 
     def load_model(self, model_name):
         model_path = os.path.join(llm_model_dir, model_name)
-        device = mm.get_torch_device()
-        print(f"Loading Pixtral model: {model_name}")
-        # TODO: Support ComfyUI Model Management
-        model = LlavaForConditionalGeneration.from_pretrained(
-            model_path,
-            use_safetensors=True,
-            device_map=device,
-        )
+        print(f"Setting Pixtral model: {model_name}")
+        # Don't load the full model until needed for generation
         processor = AutoProcessor.from_pretrained(model_path)
         pixtral_model = {
-            'model': model,
+            'path': model_path,
             'processor': processor,
         }
-        # Doesn't work... I don't want it to patch the model, I just want it to be on the list of loaded models.
-        # AttributeError: property 'device' of 'LlavaForConditionalGeneration' object has no setter
-        # from calling: self.model.device = device_to
-        # Maybe it needs a wrapper class or something to work like this.
-        # For now I think I'll leave it as is...
-        #model_patcher = ModelPatcher(model, load_device=device, offload_device="cpu")
-        #mm.load_model_gpu(model_patcher)
         return (pixtral_model,)
 
 
@@ -126,6 +113,7 @@ class PixtralGenerateText:
                 "stop_strings": ("STRING", {"default": "</s>"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
                 "include_prompt_in_output": ("BOOLEAN", {"default": False}),
+                "unload_after_generate": ("BOOLEAN", {"default": False}),
             }
         }
 
@@ -134,8 +122,16 @@ class PixtralGenerateText:
     CATEGORY = "PixtralLlamaVision/Pixtral"
     TITLE = "Generate Text with Pixtral"
 
-    def generate_text(self, pixtral_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, repetition_penalty, stop_strings, seed, include_prompt_in_output):
-        device = pixtral_model['model'].device
+    def generate_text(self, pixtral_model, images, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, repetition_penalty, stop_strings, seed, include_prompt_in_output, unload_after_generate):
+        # Load model now if needed
+        device = mm.get_torch_device()
+        if pixtral_model['path'] and 'model' not in pixtral_model:
+            pixtral_model['model'] = LlavaForConditionalGeneration.from_pretrained(
+                pixtral_model['path'],
+                use_safetensors=True,
+                device_map=device,
+            )
+
         # I'm sure there is a way to do this without converting back to numpy and then PIL...
         # Pixtral requires PIL input for some reason, and the to_pil_image function requires channels to be the first dimension for a Tensor but the last dimension for a numpy array... Yeah idk
         if images != None and len(images) > 0:
@@ -187,6 +183,13 @@ class PixtralGenerateText:
         output_tokens = generate_ids[0] if include_prompt_in_output else generate_ids[0][prompt_tokens:]
         output = pixtral_model['processor'].decode(output_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False)
         print(output)
+        
+        # Unload model
+        if unload_after_generate:
+            del pixtral_model['model']
+            torch.cuda.empty_cache()
+            print("Pixtral model unloaded")
+        
         return (output,)
 
 
@@ -207,17 +210,11 @@ class LlamaVisionModelLoader:
 
     def load_model(self, model_name):
         model_path = os.path.join(llm_model_dir, model_name)
-        device = mm.get_torch_device()
-        print(f"Loading Llama Vision model: {model_name}")
-        # TODO: Support ComfyUI Model Management
-        model = MllamaForConditionalGeneration.from_pretrained(
-            model_path,
-            use_safetensors=True,
-            device_map=device,
-        )
+        print(f"Setting Llama Vision model: {model_name}")
+        # Don't load the full model until needed for generation
         processor = AutoProcessor.from_pretrained(model_path)
         llama_vision_model = {
-            'model': model,
+            'path': model_path,
             'processor': processor,
         }
         return (llama_vision_model,)
@@ -245,6 +242,7 @@ class LlamaVisionGenerateText:
                 "stop_strings": ("STRING", {"default": "<|eot_id|>"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
                 "include_prompt_in_output": ("BOOLEAN", {"default": False}),
+                "unload_after_generate": ("BOOLEAN", {"default": False}),
             }
         }
 
@@ -255,8 +253,16 @@ class LlamaVisionGenerateText:
 
     # TODO: Support batching
 
-    def generate_text(self, llama_vision_model, images, system_prompt, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output):
-        device = llama_vision_model['model'].device
+    def generate_text(self, llama_vision_model, images, system_prompt, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output, unload_after_generate):
+        # Load model now if needed
+        device = mm.get_torch_device()
+        if llama_vision_model['path'] and 'model' not in llama_vision_model:
+            llama_vision_model['model'] = MllamaForConditionalGeneration.from_pretrained(
+                llama_vision_model['path'],
+                use_safetensors=True,
+                device_map=device,
+            )
+
         # I'm sure there is a way to do this without converting back to numpy and then PIL...
         # Llama Vision also requires PIL input for some reason, and the to_pil_image function requires channels to be the first dimension for a Tensor but the last dimension for a numpy array... Yeah idk
         
@@ -298,6 +304,13 @@ class LlamaVisionGenerateText:
         output_tokens = generate_ids[0] if include_prompt_in_output else generate_ids[0][prompt_tokens:]
         output = llama_vision_model['processor'].decode(output_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False)
         print(output)
+        
+        # Unload model
+        if unload_after_generate:
+            del llama_vision_model['model']
+            torch.cuda.empty_cache()
+            print("Llama vision model unloaded")
+        
         return (output,)
 
 
@@ -318,23 +331,15 @@ class MolmoModelLoader:
 
     def load_model(self, model_name):
         model_path = os.path.join(llm_model_dir, model_name)
-        device = mm.get_torch_device()
-        print(f"Loading Molmo model: {model_name}")
-        # TODO: Support ComfyUI Model Management
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            use_safetensors=True,
-            device_map=device,
-            torch_dtype="auto",
-            trust_remote_code=True,
-        )
+        print(f"Setting Molmo model: {model_name}")
+        # Don't load the full model until needed for generation
         processor = AutoProcessor.from_pretrained(
             model_path,
             torch_dtype="auto",
             trust_remote_code=True,
         )
         molmo_model = {
-            'model': model,
+            'path': model_path,
             'processor': processor,
         }
         return (molmo_model,)
@@ -362,6 +367,7 @@ class MolmoGenerateText:
                 "stop_strings": ("STRING", {"default": "<|endoftext|>"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffff}),
                 "include_prompt_in_output": ("BOOLEAN", {"default": False}),
+                "unload_after_generate": ("BOOLEAN", {"default": False}),
             }
         }
 
@@ -372,8 +378,17 @@ class MolmoGenerateText:
 
     # TODO: Support batching
 
-    def generate_text(self, molmo_model, images, system_prompt, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output):
-        device = molmo_model['model'].device
+    def generate_text(self, molmo_model, images, system_prompt, prompt, max_new_tokens, do_sample, temperature, top_p, top_k, stop_strings, seed, include_prompt_in_output, unload_after_generate):
+        # Load model now if needed
+        device = mm.get_torch_device()
+        if molmo_model['path'] and 'model' not in molmo_model:
+            molmo_model['model'] = AutoModelForCausalLM.from_pretrained(
+                molmo_model['path'],
+                use_safetensors=True,
+                device_map=device,
+                torch_dtype="auto",
+                trust_remote_code=True,
+            )
         
         if images != None and len(images) > 0:
             print(f"Batch of {images.shape} images")
@@ -424,8 +439,14 @@ class MolmoGenerateText:
         
         output_tokens = output[0] if include_prompt_in_output else output[0, prompt_tokens:]
         generated_text = molmo_model['processor'].tokenizer.decode(output_tokens, skip_special_tokens=True)
-        
         print(generated_text)
+        
+        # Unload model
+        if unload_after_generate:
+            del molmo_model['model']
+            torch.cuda.empty_cache()
+            print("Molmo model unloaded")
+        
         return (generated_text,)
 
 
@@ -436,7 +457,7 @@ class AutoVisionModelLoader:
         return {
             "required": {
                 "model_name": (get_models_with_config(),),
-                "trust_remote_code": ("BOOLEAN", {"default": False}),
+                "trust_remote_code": ("BOOLEAN", {"default": False}), # No longer very useful. I can add a bit of code checking this when loading Pixtral/Llama Vision if there are custom finetunes of them in the future.
             }
         }
 
@@ -448,10 +469,12 @@ class AutoVisionModelLoader:
     def load_model(self, model_name, trust_remote_code):
         model_path = os.path.join(llm_model_dir, model_name)
         device = mm.get_torch_device()
+        # Don't load the full model until needed for generation
         try:
             model_type_name = get_model_type(model_path)
+            print(f"Setting vision model: {model_name} of type {model_type_name}")
+            '''
             model_type = model_type_map.get(model_type_name, AutoModelForCausalLM)
-            print(f"Loading vision model: {model_name} of type {model_type_name}")
             model = model_type.from_pretrained(
                 model_path,
                 use_safetensors=True,
@@ -459,13 +482,16 @@ class AutoVisionModelLoader:
                 torch_dtype="auto",
                 trust_remote_code=trust_remote_code,
             )
+            '''
             processor = AutoProcessor.from_pretrained(
                 model_path,
                 torch_dtype="auto",
                 trust_remote_code=trust_remote_code,
             )
             vision_model = {
-                'model': model,
+                'path': model_path,
+                'model_type_name': model_type_name, # Not used yet
+                'trust_remote_code': trust_remote_code, # Not used yet
                 'processor': processor,
             }
             return (vision_model,)
