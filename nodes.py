@@ -690,7 +690,8 @@ class PlotPoints:
 
 
 def process_regex_flags(flags):
-    flag_value = re.NOFLAG
+    # Workaround for Python 3.10 not having re.NOFLAG
+    flag_value = 0 # re.NOFLAG
     if 'a' in flags.lower():
         flag_value |= re.A
     if 'i' in flags.lower():
